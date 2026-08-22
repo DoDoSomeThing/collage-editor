@@ -74,7 +74,6 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
     <div class="row" style="margin-top:8px"><span class="seg" style="flex:1">白框顏色</span><input type="color" id="bc" value="#ffffff"></div>
     <label>白框粗細 <span id="bwV" class="seg"></span></label><input type="range" id="bw" min="2" max="40" value="14">
   </div>
-  <div class="grp"><label>素材庫(點→填入選取格 / 無選取則新增格)</label><div class="tray" id="tray"></div></div>
   <button class="exp" id="exp">⬇ 匯出圖片 PNG</button>
   <div class="row" style="margin-top:10px"><span class="seg">影片秒數</span><input type="number" id="sec" value="6" min="1" max="30" step="1"><span class="seg" id="mtInfo"></span></div>
   <button class="exp2" id="expv">⬇ 匯出動態影片</button>
@@ -209,8 +208,7 @@ function autoGrid(){const n=frames.length;if(!n)return;const cols=Math.ceil(Math
 function syncSel(){const on=!!sel;["shape","border","zoom","bigger","smaller","dup","del","front","back"].forEach(id=>document.getElementById(id).disabled=!on);
   if(sel){document.getElementById("shape").textContent="形狀:"+(sel.shape==="circle"?"圓":"方");
     const bb=document.getElementById("border");bb.textContent="白框:"+(sel.border?"開":"關");bb.classList.toggle("on",sel.border);
-    document.getElementById("zoom").value=Math.round(sel.zoom*100);}
-  [...document.querySelectorAll(".thumb")].forEach(t=>t.classList.toggle("on",sel&&+t.dataset.id===sel.pid));}
+    document.getElementById("zoom").value=Math.round(sel.zoom*100);}}
 document.getElementById("shape").onclick=()=>{if(!sel)return;sel.shape=sel.shape==="circle"?"rect":"circle";syncSel();drawScreen();};
 document.getElementById("border").onclick=()=>{if(!sel)return;sel.border=!sel.border;syncSel();drawScreen();};
 document.getElementById("zoom").oninput=e=>{if(!sel)return;sel.zoom=e.target.value/100;drawScreen();};
@@ -221,16 +219,11 @@ document.getElementById("bc").oninput=e=>{G.bc=e.target.value;drawScreen();};
 function bindS(id,key,fmt){const el=document.getElementById(id),v=document.getElementById(id+"V");const u=()=>{G[key]=+el.value;v.textContent=fmt(el.value);drawScreen();};el.oninput=u;u();}
 bindS("rd","rd",x=>x+"px");bindS("gp","gp",x=>x+"px");bindS("bw","bw",x=>x+"px");
 
-// ---------- library ----------
-const tray=document.getElementById("tray");let idC=0;
-function addThumb(id,el,isVideo){const t=isVideo?document.createElement("video"):document.createElement("img");
-  if(isVideo){t.src=el.src;t.muted=true;t.loop=true;t.autoplay=true;t.playsInline=true;t.play().catch(()=>{});}else t.src=el.src;
-  t.className="thumb";t.dataset.id=id;t.title="填入選取格 / 新增格";
-  t.onclick=()=>{if(sel){sel.pid=id;sel.fx=.5;sel.fy=.5;sel.zoom=1;}else addFrame(id);syncSel();drawScreen();};
-  tray.appendChild(t);}
-function makeImage(src){const id=++idC,img=new Image();img.onload=()=>drawScreen();img.src=src;media.push({id,type:"image",el:img});addThumb(id,img,false);return id;}
+// ---------- media add ----------
+let idC=0;
+function makeImage(src){const id=++idC,img=new Image();img.onload=()=>drawScreen();img.src=src;media.push({id,type:"image",el:img});return id;}
 function makeVideo(src){const id=++idC,v=document.createElement("video");v.src=src;v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
-  v.onloadeddata=()=>{ensureLoop();drawScreen();};v.play().catch(()=>{});media.push({id,type:"video",el:v});addThumb(id,v,true);ensureLoop();return id;}
+  v.onloadeddata=()=>{ensureLoop();drawScreen();};v.play().catch(()=>{});media.push({id,type:"video",el:v});ensureLoop();return id;}
 function fileToMedia(file,cb){if(file.type.startsWith("video")){cb(makeVideo(URL.createObjectURL(file)));}
   else if(file.type.startsWith("image")){const r=new FileReader();r.onload=e=>cb(makeImage(e.target.result));r.readAsDataURL(file);}}
 let pendingFrame=null;
@@ -238,9 +231,9 @@ function openPicker(frame){pendingFrame=frame||null;const fi=document.getElement
 document.getElementById("addAny").onclick=()=>openPicker(null);
 document.getElementById("fileAny").onchange=e=>{const files=[...e.target.files],fr=pendingFrame;pendingFrame=null;
   files.forEach((f,i)=>{if(i===0&&fr){fileToMedia(f,id=>{fr.pid=id;fr.zoom=1;fr.fx=.5;fr.fy=.5;syncSel();drawScreen();});}
-    else fileToMedia(f,()=>{});});e.target.value="";};
+    else fileToMedia(f,id=>addFrame(id));});e.target.value="";};
 ["dragover","drop"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
-document.addEventListener("drop",e=>{[...e.dataTransfer.files].forEach(f=>fileToMedia(f,()=>{}));});
+document.addEventListener("drop",e=>{[...e.dataTransfer.files].forEach(f=>fileToMedia(f,id=>addFrame(id)));});
 document.addEventListener("click",()=>media.filter(m=>m.type==="video").forEach(m=>m.el.paused&&m.el.play().catch(()=>{})),true);
 
 // ---------- export ----------
