@@ -15,12 +15,13 @@ h1{font-size:16px;margin:0;color:var(--acc)}
 .drawer.open{transform:none}
 .drawerHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 #close{background:none;border:0;color:var(--sub);font-size:20px;min-height:0;padding:4px 10px}
-#abar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:none;gap:8px;align-items:center;z-index:35;background:rgba(20,22,28,.96);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.55)}
+#abar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:8px;z-index:35;max-width:94vw;background:rgba(20,22,28,.96);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 8px 30px rgba(0,0,0,.55)}
 #abar.show{display:flex}
-.abtn{min-height:46px;padding:8px 18px;border-radius:10px;background:#12151b;border:1px solid var(--line);color:var(--txt);font-size:15px;cursor:pointer}
-.abtn.ok{background:var(--acc);color:#1a1a1a;border:0;font-weight:700}
+.arow{display:flex;flex-wrap:nowrap;gap:8px}
+.abtn{min-height:46px;padding:8px 18px;border-radius:10px;background:#12151b;border:1px solid var(--line);color:var(--txt);font-size:15px;white-space:nowrap;cursor:pointer}
+.abtn.ok{background:var(--acc);color:#1a1a1a;border:0;font-weight:700;padding:8px 28px}
 .abtn.warn{border-color:#c0504a;color:#e88}
-.ahint{font-size:12px;color:var(--sub);padding:0 10px}
+.ahint{font-size:12px;color:var(--sub);text-align:center;white-space:nowrap}
 .grp{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .grp:last-child{border:0;margin:0;padding:0}
 label{display:block;font-size:11px;color:var(--sub);margin:0 0 6px;letter-spacing:.03em}
@@ -193,9 +194,10 @@ cv.addEventListener("wheel",e=>{const p=P(e);const f=editing||frameAt(p);if(!f||
 // ---------- edit mode + action bar ----------
 const abar=document.getElementById("abar");
 function mkbtn(t,cls,fn){const b=document.createElement("button");b.className="abtn"+(cls?" "+cls:"");b.textContent=t;b.onclick=fn;return b;}
+function arow(...btns){const r=document.createElement("div");r.className="arow";r.append(...btns);return r;}
 function renderBar(){abar.innerHTML="";
-  if(editing){const h=document.createElement("span");h.className="ahint";h.textContent="拖曳=位移　滾輪/雙指=縮放";abar.append(h,mkbtn("✓ 完成","ok",exitEdit));abar.classList.add("show");return;}
-  if(sel&&sel.pid){abar.append(mkbtn("✎ 編輯","",()=>enterEdit(sel)),mkbtn("🗑 刪除","warn",delSel),mkbtn("✕","",deselect));abar.classList.add("show");return;}
+  if(editing){const h=document.createElement("div");h.className="ahint";h.textContent="拖曳=位移 ・ 滾輪/雙指=縮放";abar.append(h,arow(mkbtn("✓ 完成","ok",exitEdit)));abar.classList.add("show");return;}
+  if(sel&&sel.pid){abar.append(arow(mkbtn("✎ 編輯","",()=>enterEdit(sel)),mkbtn("🗑 刪除","warn",delSel),mkbtn("✕","",deselect)));abar.classList.add("show");return;}
   abar.classList.remove("show");}
 function deselect(){sel=null;syncSel();drawScreen();}
 function delSel(){if(!sel)return;frames=frames.filter(f=>f!==sel);sel=null;editing=null;syncSel();drawScreen();}
