@@ -199,10 +199,10 @@ function mkbtn(t,cls,fn){const b=document.createElement("button");b.className="a
 function arow(...btns){const r=document.createElement("div");r.className="arow";r.append(...btns);return r;}
 function renderBar(){abar.innerHTML="";
   if(editing){const h=document.createElement("div");h.className="ahint";h.textContent="拖曳=位移 ・ 滾輪/雙指=縮放";abar.append(h,arow(mkbtn("✓ 完成","ok",exitEdit)));abar.classList.add("show");return;}
-  if(sel&&sel.pid){abar.append(arow(mkbtn("✎ 編輯","",()=>enterEdit(sel)),mkbtn("🗑 刪除","warn",delSel),mkbtn("✕","",deselect)));abar.classList.add("show");return;}
+  if(sel&&sel.pid){abar.append(arow(mkbtn("✎ 編輯","",()=>enterEdit(sel)),mkbtn("🗑 移除素材","warn",clearMedia),mkbtn("✕","",deselect)));abar.classList.add("show");return;}
   abar.classList.remove("show");}
 function deselect(){sel=null;syncSel();drawScreen();}
-function delSel(){if(!sel)return;frames=frames.filter(f=>f!==sel);sel=null;editing=null;syncSel();drawScreen();}
+function clearMedia(){if(!sel)return;editing=null;sel.pid=null;sel.zoom=1;sel.fx=.5;sel.fy=.5;syncSel();drawScreen();}
 function enterEdit(f){editing=f;sel=f;const m=mById(f.pid);if(m&&m.type==="video")m.el.pause();syncSel();drawScreen();}
 function exitEdit(){if(editing){const m=mById(editing.pid);if(m&&m.type==="video")m.el.play().catch(()=>{});}editing=null;syncSel();drawScreen();}
 function snap(f,nx,ny){const t=18,CX=[0,RW/2,RW],CY=[0,RH/2,RH];let rx=nx,ry=ny;
