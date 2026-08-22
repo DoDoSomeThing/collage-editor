@@ -4,11 +4,17 @@
 <style>
 :root{--bg:#0f1115;--panel:#191c22;--line:#2a2f39;--txt:#e8eaed;--sub:#9aa0aa;--acc:#e2c85a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,"PingFang TC",sans-serif;display:flex;gap:18px;padding:16px;flex-wrap:wrap;justify-content:center}
-h1{font-size:16px;margin:0 0 12px;color:var(--acc)}
-#stageWrap{display:flex;flex-direction:column;align-items:center;gap:8px;position:sticky;top:8px;align-self:flex-start}
-#stage{background:#000;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);touch-action:none;display:block;max-width:94vw;max-height:64vh}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;width:320px;max-width:94vw}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,"PingFang TC",sans-serif}
+h1{font-size:16px;margin:0;color:var(--acc)}
+#stageWrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+#stage{background:#000;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);touch-action:none;display:block;max-width:94vw;max-height:78vh}
+#menu{position:fixed;top:12px;right:12px;z-index:40;background:var(--acc);color:#1a1a1a;border:0;border-radius:10px;font-weight:700;padding:11px 15px;min-height:0;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+.backdrop.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:340px;max-width:88vw;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow-y:auto;transform:translateX(105%);transition:transform .25s;z-index:30;box-shadow:-10px 0 40px rgba(0,0,0,.45)}
+.drawer.open{transform:none}
+.drawerHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+#close{background:none;border:0;color:var(--sub);font-size:20px;min-height:0;padding:4px 10px}
 .grp{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .grp:last-child{border:0;margin:0;padding:0}
 label{display:block;font-size:11px;color:var(--sub);margin:0 0 6px;letter-spacing:.03em}
@@ -31,20 +37,21 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
 .exp2{width:100%;background:#12151b;border:1px solid var(--acc);color:var(--acc);font-weight:700;padding:12px;font-size:14px;margin-top:8px}
 .hint{font-size:11px;color:var(--sub);margin-top:10px;line-height:1.7}
 .seg{font-size:12px;color:var(--sub)}
-@media(max-width:720px){body{padding:10px;gap:10px}#stageWrap{position:static}#stage{max-height:52vh}.panel{width:100%}}
+@media(max-width:720px){#stage{max-height:70vh}}
 </style></head><body>
+<button id="menu">☰ 功能</button>
+<div class="backdrop" id="backdrop"></div>
 <div id="stageWrap">
   <canvas id="stage"></canvas>
-  <div class="seg" id="status">拖曳=移動 ・ 角=縮放格 ・ 雙指/滾輪=縮放圖 ・ 長按拖=移圖內</div>
+  <div class="seg" id="status">點空格=加照片/影片 ・ 拖曳=移動 ・ 角=縮放 ・ 長按拖=移圖內</div>
 </div>
-<div class="panel">
-  <h1>拼圖編輯器</h1>
+<div class="panel drawer" id="panel">
+  <div class="drawerHead"><h1>拼圖編輯器</h1><button id="close">✕</button></div>
   <div class="grp"><label>畫布比例</label><div class="btns rat" id="ratios"></div></div>
   <div class="grp"><label>模板(套用後照片保留)</label><div class="tpls" id="tpls"></div></div>
-  <div class="grp"><label>操作</label><div class="btns">
-    <button id="add">＋照片</button>
-    <button id="vid">＋影片</button>
-    <button id="cell">＋格子</button>
+  <div class="grp"><label>操作(或直接點畫布空格加素材)</label><div class="btns">
+    <button id="addAny">＋照片/影片</button>
+    <button id="cell">＋空格子</button>
     <button id="dup">複製</button>
     <button id="del">刪格</button>
   </div><div class="btns" style="margin-top:7px">
@@ -72,8 +79,7 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
   <div class="row" style="margin-top:10px"><span class="seg">影片秒數</span><input type="number" id="sec" value="6" min="1" max="30" step="1"><span class="seg" id="mtInfo"></span></div>
   <button class="exp2" id="expv">⬇ 匯出動態影片</button>
   <div class="hint">用電腦或手機瀏覽器開。可放照片與影片,匯出限動尺寸 PNG 或影片。<br>圓形 LOGO:加格→形狀圓→白框開。影片匯出時所有影片會同時播放並錄製。</div>
-  <input type="file" id="file" accept="image/*" multiple hidden>
-  <input type="file" id="filev" accept="video/*" multiple hidden>
+  <input type="file" id="fileAny" accept="image/*,video/*" multiple hidden>
 </div>
 <script>
 const RATIOS={"9:16":[1080,1920],"4:5":[1080,1350],"1:1":[1080,1080],"16:9":[1920,1080],"3:4":[1080,1440]};
@@ -81,7 +87,7 @@ let RW=1080,RH=1920;
 const cv=document.getElementById("stage"),cx=cv.getContext("2d");
 const media=[];             // {id,type:'image'|'video',el}
 let frames=[];              // {x,y,w,h,pid,shape,border,zoom,fx,fy}
-let sel=null, mode=null, drag=null, guides=[];
+let sel=null, mode=null, drag=null, guides=[], pressF=null, moved=false;
 let looping=false, recording=false;
 const G={bg:"#ffffff",rd:0,gp:0,bc:"#ffffff",bw:14};
 const COARSE=matchMedia("(pointer:coarse)").matches;
@@ -107,7 +113,7 @@ function applyTemplate(name){const lay=TPL[name],old=frames.map(f=>({pid:f.pid,z
 function setRatio(k){[RW,RH]=RATIOS[k];cv.width=RW;cv.height=RH;fitStage();
   [...document.querySelectorAll("#ratios button")].forEach(b=>b.classList.toggle("on",b.textContent===k));
   frames.forEach(f=>{f.x=Math.min(f.x,RW-f.w);f.y=Math.min(f.y,RH-f.h);});draw();}
-function fitStage(){const maxW=Math.min(window.innerWidth*0.94,440),maxH=window.innerHeight*(COARSE?0.52:0.64);
+function fitStage(){const maxW=Math.min(window.innerWidth*0.94,520),maxH=window.innerHeight*(COARSE?0.72:0.82);
   let s=Math.min(maxW/RW,maxH/RH);cv.style.width=(RW*s)+"px";cv.style.height=(RH*s)+"px";}
 window.addEventListener("resize",fitStage);
 function P(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*RW,y:(e.clientY-r.top)/r.height*RH};}
@@ -133,7 +139,7 @@ function draw(chrome){cx.clearRect(0,0,RW,RH);cx.fillStyle=G.bg;cx.fillRect(0,0,
     const m=mById(f.pid),d=dim(m);
     if(m&&d.ready){const c=coverParams(ff,m);cx.drawImage(m.el,c.dx,c.dy,c.dw,c.dh);}
     else{cx.fillStyle="#eef0f4";cx.fillRect(b.x,b.y,b.w,b.h);cx.fillStyle="#b3b9c4";cx.textAlign="center";cx.textBaseline="middle";
-      if(b.w>150&&b.h>170){cx.font="58px sans-serif";cx.fillText("＋",b.x+b.w/2,b.y+b.h/2-14);cx.font="22px sans-serif";cx.fillText("點素材填入",b.x+b.w/2,b.y+b.h/2+38);}
+      if(b.w>150&&b.h>170){cx.font="58px sans-serif";cx.fillText("＋",b.x+b.w/2,b.y+b.h/2-16);cx.font="22px sans-serif";cx.fillText("點我加照片/影片",b.x+b.w/2,b.y+b.h/2+40);}
       else if(b.w>80&&b.h>80){cx.font="46px sans-serif";cx.fillText("＋",b.x+b.w/2,b.y+b.h/2);}
       cx.textBaseline="alphabetic";}
     cx.restore();
@@ -152,9 +158,9 @@ function ensureLoop(){if(looping)return;looping=true;(function l(){drawScreen();
 function handleHit(f,p){const hs=COARSE?54:36;return p.x>=f.x+f.w-hs&&p.x<=f.x+f.w+8&&p.y>=f.y+f.h-hs&&p.y<=f.y+f.h+8;}
 function frameAt(p){for(let i=frames.length-1;i>=0;i--){const f=frames[i];if(p.x>=f.x&&p.x<=f.x+f.w&&p.y>=f.y&&p.y<=f.y+f.h)return f;}return null;}
 let longT=null;
-cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);const p=P(e);
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);const p=P(e);moved=false;pressF=null;
   if(sel&&handleHit(sel,p)){mode="resize";drag={p,w:sel.w,h:sel.h};return;}
-  const f=frameAt(p);
+  const f=frameAt(p);pressF=f;
   if(f){sel=f;syncSel();drag={p,x:f.x,y:f.y,fx:f.fx,fy:f.fy};
     if(e.shiftKey&&f.pid){mode="pan";}
     else{mode="move";
@@ -162,6 +168,7 @@ cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);const p=
   }else{sel=null;syncSel();}
   drawScreen();});
 cv.addEventListener("pointermove",e=>{if(!mode)return;const p=P(e);guides=[];
+  if(drag&&Math.hypot(p.x-drag.p.x,p.y-drag.p.y)>6)moved=true;
   if(longT&&(Math.abs(p.x-drag.p.x)>8||Math.abs(p.y-drag.p.y)>8)&&mode==="move"){clearTimeout(longT);longT=null;}
   if(mode==="move"){let nx=drag.x+(p.x-drag.p.x),ny=drag.y+(p.y-drag.p.y);const s=snap(sel,nx,ny);
     sel.x=Math.max(0,Math.min(RW-sel.w,s.x));sel.y=Math.max(0,Math.min(RH-sel.h,s.y));}
@@ -169,7 +176,9 @@ cv.addEventListener("pointermove",e=>{if(!mode)return;const p=P(e);guides=[];
   else if(mode==="pan"){const m=mById(sel.pid);if(m){const d=dim(m),c0=Math.max(sel.w/d.w,sel.h/d.h)*sel.zoom;
     sel.fx=Math.min(1,Math.max(0,drag.fx-(p.x-drag.p.x)/(d.w*c0)));sel.fy=Math.min(1,Math.max(0,drag.fy-(p.y-drag.p.y)/(d.h*c0)));}}
   drawScreen();});
-function endPointer(){if(longT){clearTimeout(longT);longT=null;}mode=null;guides=[];drawScreen();}
+function endPointer(){if(longT){clearTimeout(longT);longT=null;}
+  if(!moved&&pressF&&!pressF.pid&&mode!=="resize"){openPicker(pressF);}
+  pressF=null;mode=null;guides=[];drawScreen();}
 cv.addEventListener("pointerup",endPointer);cv.addEventListener("pointercancel",endPointer);
 cv.addEventListener("wheel",e=>{const p=P(e);const f=frameAt(p);if(!f||!f.pid)return;e.preventDefault();
   f.zoom=Math.min(4,Math.max(1,f.zoom*(e.deltaY<0?1.08:0.93)));sel=f;syncSel();drawScreen();},{passive:false});
@@ -219,15 +228,19 @@ function addThumb(id,el,isVideo){const t=isVideo?document.createElement("video")
   t.className="thumb";t.dataset.id=id;t.title="填入選取格 / 新增格";
   t.onclick=()=>{if(sel){sel.pid=id;sel.fx=.5;sel.fy=.5;sel.zoom=1;}else addFrame(id);syncSel();drawScreen();};
   tray.appendChild(t);}
-function addImage(src){const id=++idC,img=new Image();img.onload=()=>drawScreen();img.src=src;media.push({id,type:"image",el:img});addThumb(id,img,false);}
-function addVideo(src){const id=++idC,v=document.createElement("video");v.src=src;v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
-  v.onloadeddata=()=>{ensureLoop();drawScreen();};v.play().catch(()=>{});media.push({id,type:"video",el:v});addThumb(id,v,true);ensureLoop();}
-document.getElementById("add").onclick=()=>document.getElementById("file").click();
-document.getElementById("vid").onclick=()=>document.getElementById("filev").click();
-document.getElementById("file").onchange=e=>{[...e.target.files].forEach(f=>{const r=new FileReader();r.onload=ev=>addImage(ev.target.result);r.readAsDataURL(f);});e.target.value="";};
-document.getElementById("filev").onchange=e=>{[...e.target.files].forEach(f=>addVideo(URL.createObjectURL(f)));e.target.value="";};
+function makeImage(src){const id=++idC,img=new Image();img.onload=()=>drawScreen();img.src=src;media.push({id,type:"image",el:img});addThumb(id,img,false);return id;}
+function makeVideo(src){const id=++idC,v=document.createElement("video");v.src=src;v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+  v.onloadeddata=()=>{ensureLoop();drawScreen();};v.play().catch(()=>{});media.push({id,type:"video",el:v});addThumb(id,v,true);ensureLoop();return id;}
+function fileToMedia(file,cb){if(file.type.startsWith("video")){cb(makeVideo(URL.createObjectURL(file)));}
+  else if(file.type.startsWith("image")){const r=new FileReader();r.onload=e=>cb(makeImage(e.target.result));r.readAsDataURL(file);}}
+let pendingFrame=null;
+function openPicker(frame){pendingFrame=frame||null;const fi=document.getElementById("fileAny");fi.value="";fi.click();}
+document.getElementById("addAny").onclick=()=>openPicker(null);
+document.getElementById("fileAny").onchange=e=>{const files=[...e.target.files],fr=pendingFrame;pendingFrame=null;
+  files.forEach((f,i)=>{if(i===0&&fr){fileToMedia(f,id=>{fr.pid=id;fr.zoom=1;fr.fx=.5;fr.fy=.5;syncSel();drawScreen();});}
+    else fileToMedia(f,()=>{});});e.target.value="";};
 ["dragover","drop"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
-document.addEventListener("drop",e=>{[...e.dataTransfer.files].forEach(f=>{if(f.type.startsWith("video"))addVideo(URL.createObjectURL(f));else if(f.type.startsWith("image")){const r=new FileReader();r.onload=ev=>addImage(ev.target.result);r.readAsDataURL(f);}});});
+document.addEventListener("drop",e=>{[...e.dataTransfer.files].forEach(f=>fileToMedia(f,()=>{}));});
 document.addEventListener("click",()=>media.filter(m=>m.type==="video").forEach(m=>m.el.paused&&m.el.play().catch(()=>{})),true);
 
 // ---------- export ----------
@@ -250,6 +263,13 @@ function dl(blob,name){const a=document.createElement("a");a.download=name;a.hre
 // ---------- init ----------
 Object.keys(RATIOS).forEach(k=>{const b=document.createElement("button");b.textContent=k;b.onclick=()=>setRatio(k);document.getElementById("ratios").appendChild(b);});
 Object.keys(TPL).forEach(k=>{const b=document.createElement("button");b.textContent=k;b.onclick=()=>applyTemplate(k);document.getElementById("tpls").appendChild(b);});
+const panel=document.getElementById("panel"),backdrop=document.getElementById("backdrop");
+const stageWrap=document.getElementById("stageWrap");
+function openDrawer(){panel.classList.add("open");if(COARSE)backdrop.classList.add("open");else{stageWrap.style.paddingRight="356px";fitStage();}}
+function closeDrawer(){panel.classList.remove("open");backdrop.classList.remove("open");stageWrap.style.paddingRight="";fitStage();}
+document.getElementById("menu").onclick=()=>panel.classList.contains("open")?closeDrawer():openDrawer();
+document.getElementById("close").onclick=closeDrawer;backdrop.onclick=closeDrawer;
 setRatio("9:16");applyTemplate("2×2");syncSel();
+if(!COARSE)openDrawer();
 
 </script></body></html>
