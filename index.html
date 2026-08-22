@@ -86,7 +86,7 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
   <div class="row" style="margin-top:10px"><span class="seg">影片秒數</span><input type="number" id="sec" value="6" min="1" max="30" step="1"><span class="seg" id="mtInfo"></span></div>
   <button class="exp2" id="expv">⬇ 匯出動態影片</button>
   <div class="hint">用電腦或手機瀏覽器開。可放照片與影片,匯出限動尺寸 PNG 或影片。<br>圓形 LOGO:加格→形狀圓→白框開。影片匯出時所有影片會同時播放並錄製。</div>
-  <input type="file" id="fileAny" accept="image/*,video/*" multiple hidden>
+  <input type="file" id="fileAny" accept="image/*,video/*" multiple style="position:fixed;width:1px;height:1px;opacity:0;left:50%;top:60%;z-index:-1;pointer-events:none">
 </div>
 <script>
 const RATIOS={"9:16":[1080,1920],"4:5":[1080,1350],"1:1":[1080,1080],"16:9":[1920,1080],"3:4":[1080,1440]};
@@ -96,6 +96,7 @@ const media=[];             // {id,type:'image'|'video',el}
 let frames=[];              // {x,y,w,h,pid,shape,border,zoom,fx,fy}
 let sel=null, mode=null, drag=null, guides=[], pressF=null, moved=false, editing=null;
 const pointers=new Map();let pinch=null;
+let lastPt={x:innerWidth/2,y:innerHeight*0.6};
 let looping=false, recording=false;
 const G={bg:"#ffffff",rd:0,gp:0,bc:"#ffffff",bw:14};
 const COARSE=matchMedia("(pointer:coarse)").matches;
@@ -168,6 +169,7 @@ function handleHit(f,p){const hs=COARSE?54:36;return p.x>=f.x+f.w-hs&&p.x<=f.x+f
 function frameAt(p){for(let i=frames.length-1;i>=0;i--){const f=frames[i];if(p.x>=f.x&&p.x<=f.x+f.w&&p.y>=f.y&&p.y<=f.y+f.h)return f;}return null;}
 function pDist(){const a=[...pointers.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);}
 cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  lastPt={x:e.clientX,y:e.clientY};
   const p=P(e);moved=false;pressF=null;
   if(editing){if(pointers.size===2){pinch={d:pDist(),z:editing.zoom};mode=null;return;}mode="pan";drag={p,fx:editing.fx,fy:editing.fy};return;}
   if(sel&&handleHit(sel,p)){mode="resize";drag={p,w:sel.w,h:sel.h};return;}
@@ -250,8 +252,9 @@ function makeVideo(src){const id=++idC,v=document.createElement("video");v.src=s
 function fileToMedia(file,cb){if(file.type.startsWith("video")){cb(makeVideo(URL.createObjectURL(file)));}
   else if(file.type.startsWith("image")){const r=new FileReader();r.onload=e=>cb(makeImage(e.target.result));r.readAsDataURL(file);}}
 let pendingFrame=null;
-function openPicker(frame){pendingFrame=frame||null;const fi=document.getElementById("fileAny");fi.value="";fi.click();}
-document.getElementById("addAny").onclick=()=>openPicker(null);
+function openPicker(frame){pendingFrame=frame||null;const fi=document.getElementById("fileAny");
+  fi.style.left=Math.round(lastPt.x)+"px";fi.style.top=Math.round(lastPt.y)+"px";fi.value="";fi.click();}
+document.getElementById("addAny").onclick=e=>{lastPt={x:e.clientX||innerWidth/2,y:e.clientY||innerHeight/2};openPicker(null);};
 document.getElementById("fileAny").onchange=e=>{const files=[...e.target.files],fr=pendingFrame;pendingFrame=null;
   files.forEach((f,i)=>{if(i===0&&fr){fileToMedia(f,id=>{fr.pid=id;fr.zoom=1;fr.fx=.5;fr.fy=.5;syncSel();drawScreen();});}
     else fileToMedia(f,id=>addFrame(id));});e.target.value="";};
