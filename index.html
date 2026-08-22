@@ -8,13 +8,19 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,
 h1{font-size:16px;margin:0;color:var(--acc)}
 #stageWrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
 #stage{background:#000;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);touch-action:none;display:block;max-width:94vw;max-height:78vh}
-#menu{position:fixed;top:12px;right:12px;z-index:40;background:var(--acc);color:#1a1a1a;border:0;border-radius:10px;font-weight:700;padding:11px 15px;min-height:0;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#menu{position:fixed;top:12px;left:12px;z-index:40;background:var(--acc);color:#1a1a1a;border:0;border-radius:10px;font-weight:700;padding:11px 15px;min-height:0;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
 .backdrop.open{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:340px;max-width:88vw;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow-y:auto;transform:translateX(105%);transition:transform .25s;z-index:30;box-shadow:-10px 0 40px rgba(0,0,0,.45)}
+.drawer{position:fixed;top:0;left:0;height:100vh;width:340px;max-width:88vw;background:var(--panel);border-right:1px solid var(--line);padding:16px;overflow-y:auto;transform:translateX(-105%);transition:transform .25s;z-index:30;box-shadow:10px 0 40px rgba(0,0,0,.45)}
 .drawer.open{transform:none}
 .drawerHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 #close{background:none;border:0;color:var(--sub);font-size:20px;min-height:0;padding:4px 10px}
+#abar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:none;gap:8px;align-items:center;z-index:35;background:rgba(20,22,28,.96);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.55)}
+#abar.show{display:flex}
+.abtn{min-height:46px;padding:8px 18px;border-radius:10px;background:#12151b;border:1px solid var(--line);color:var(--txt);font-size:15px;cursor:pointer}
+.abtn.ok{background:var(--acc);color:#1a1a1a;border:0;font-weight:700}
+.abtn.warn{border-color:#c0504a;color:#e88}
+.ahint{font-size:12px;color:var(--sub);padding:0 10px}
 .grp{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .grp:last-child{border:0;margin:0;padding:0}
 label{display:block;font-size:11px;color:var(--sub);margin:0 0 6px;letter-spacing:.03em}
@@ -41,9 +47,10 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
 </style></head><body>
 <button id="menu">☰ 功能</button>
 <div class="backdrop" id="backdrop"></div>
+<div id="abar"></div>
 <div id="stageWrap">
   <canvas id="stage"></canvas>
-  <div class="seg" id="status">點空格=加照片/影片 ・ 拖曳=移動 ・ 角=縮放 ・ 長按拖=移圖內</div>
+  <div class="seg" id="status">點空格=加素材 ・ 點素材=編輯/刪除 ・ 拖曳=移動格 ・ 角=縮放格</div>
 </div>
 <div class="panel drawer" id="panel">
   <div class="drawerHead"><h1>拼圖編輯器</h1><button id="close">✕</button></div>
@@ -86,7 +93,8 @@ let RW=1080,RH=1920;
 const cv=document.getElementById("stage"),cx=cv.getContext("2d");
 const media=[];             // {id,type:'image'|'video',el}
 let frames=[];              // {x,y,w,h,pid,shape,border,zoom,fx,fy}
-let sel=null, mode=null, drag=null, guides=[], pressF=null, moved=false;
+let sel=null, mode=null, drag=null, guides=[], pressF=null, moved=false, editing=null;
+const pointers=new Map();let pinch=null;
 let looping=false, recording=false;
 const G={bg:"#ffffff",rd:0,gp:0,bc:"#ffffff",bw:14};
 const COARSE=matchMedia("(pointer:coarse)").matches;
@@ -144,7 +152,8 @@ function draw(chrome){cx.clearRect(0,0,RW,RH);cx.fillStyle=G.bg;cx.fillRect(0,0,
     cx.restore();
     if(f.border){cx.save();pathFrame(ff);cx.lineWidth=G.bw;cx.strokeStyle=G.bc;cx.stroke();cx.restore();}
   });
-  if(chrome&&sel){const b=inset(sel),ff={...sel,...b};cx.save();pathFrame(ff);cx.lineWidth=3;cx.setLineDash([12,8]);cx.strokeStyle="#e2c85a";cx.stroke();cx.restore();
+  if(chrome&&editing){const b=inset(editing),ff={...editing,...b};cx.save();pathFrame(ff);cx.lineWidth=6;cx.setLineDash([]);cx.strokeStyle="#e2c85a";cx.stroke();cx.restore();}
+  else if(chrome&&sel){const b=inset(sel),ff={...sel,...b};cx.save();pathFrame(ff);cx.lineWidth=3;cx.setLineDash([12,8]);cx.strokeStyle="#e2c85a";cx.stroke();cx.restore();
     const hs=COARSE?46:32,hx=sel.x+sel.w-hs,hy=sel.y+sel.h-hs;
     cx.save();cx.setLineDash([]);cx.fillStyle="#fff";cx.strokeStyle="#e2c85a";cx.lineWidth=3;cx.fillRect(hx,hy,hs,hs);cx.strokeRect(hx,hy,hs,hs);
     cx.lineWidth=2.5;cx.beginPath();cx.moveTo(hx+hs*.28,hy+hs*.78);cx.lineTo(hx+hs*.78,hy+hs*.28);cx.moveTo(hx+hs*.5,hy+hs*.78);cx.lineTo(hx+hs*.78,hy+hs*.5);cx.stroke();cx.restore();}
@@ -156,31 +165,42 @@ function ensureLoop(){if(looping)return;looping=true;(function l(){drawScreen();
 // ---------- hit/interaction ----------
 function handleHit(f,p){const hs=COARSE?54:36;return p.x>=f.x+f.w-hs&&p.x<=f.x+f.w+8&&p.y>=f.y+f.h-hs&&p.y<=f.y+f.h+8;}
 function frameAt(p){for(let i=frames.length-1;i>=0;i--){const f=frames[i];if(p.x>=f.x&&p.x<=f.x+f.w&&p.y>=f.y&&p.y<=f.y+f.h)return f;}return null;}
-let longT=null;
-cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);const p=P(e);moved=false;pressF=null;
+function pDist(){const a=[...pointers.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);}
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const p=P(e);moved=false;pressF=null;
+  if(editing){if(pointers.size===2){pinch={d:pDist(),z:editing.zoom};mode=null;return;}mode="pan";drag={p,fx:editing.fx,fy:editing.fy};return;}
   if(sel&&handleHit(sel,p)){mode="resize";drag={p,w:sel.w,h:sel.h};return;}
   const f=frameAt(p);pressF=f;
-  if(f){sel=f;syncSel();drag={p,x:f.x,y:f.y,fx:f.fx,fy:f.fy};
-    if(e.shiftKey&&f.pid){mode="pan";}
-    else{mode="move";
-      if(f.pid&&COARSE){longT=setTimeout(()=>{mode="pan";drag.p=p;drag.fx=f.fx;drag.fy=f.fy;navigator.vibrate&&navigator.vibrate(15);},350);}}
-  }else{sel=null;syncSel();}
+  if(f){sel=f;syncSel();drag={p,x:f.x,y:f.y};mode="move";}
+  else{sel=null;syncSel();}
   drawScreen();});
-cv.addEventListener("pointermove",e=>{if(!mode)return;const p=P(e);guides=[];
+cv.addEventListener("pointermove",e=>{if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&editing&&pointers.size>=2){editing.zoom=Math.min(4,Math.max(1,pinch.z*pDist()/pinch.d));syncSel();drawScreen();return;}
+  if(!mode)return;const p=P(e);guides=[];
   if(drag&&Math.hypot(p.x-drag.p.x,p.y-drag.p.y)>6)moved=true;
-  if(longT&&(Math.abs(p.x-drag.p.x)>8||Math.abs(p.y-drag.p.y)>8)&&mode==="move"){clearTimeout(longT);longT=null;}
   if(mode==="move"){let nx=drag.x+(p.x-drag.p.x),ny=drag.y+(p.y-drag.p.y);const s=snap(sel,nx,ny);
     sel.x=Math.max(0,Math.min(RW-sel.w,s.x));sel.y=Math.max(0,Math.min(RH-sel.h,s.y));}
   else if(mode==="resize"){sel.w=Math.max(80,Math.min(RW-sel.x,drag.w+(p.x-drag.p.x)));sel.h=Math.max(80,Math.min(RH-sel.y,drag.h+(p.y-drag.p.y)));}
-  else if(mode==="pan"){const m=mById(sel.pid);if(m){const d=dim(m),c0=Math.max(sel.w/d.w,sel.h/d.h)*sel.zoom;
-    sel.fx=Math.min(1,Math.max(0,drag.fx-(p.x-drag.p.x)/(d.w*c0)));sel.fy=Math.min(1,Math.max(0,drag.fy-(p.y-drag.p.y)/(d.h*c0)));}}
+  else if(mode==="pan"&&editing){const m=mById(editing.pid);if(m){const d=dim(m),c0=Math.max(editing.w/d.w,editing.h/d.h)*editing.zoom;
+    editing.fx=Math.min(1,Math.max(0,drag.fx-(p.x-drag.p.x)/(d.w*c0)));editing.fy=Math.min(1,Math.max(0,drag.fy-(p.y-drag.p.y)/(d.h*c0)));}}
   drawScreen();});
-function endPointer(){if(longT){clearTimeout(longT);longT=null;}
-  if(!moved&&pressF&&!pressF.pid&&mode!=="resize"){openPicker(pressF);}
+function endPointer(e){if(e&&pointers.has(e.pointerId))pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;
+  if(!moved&&!editing&&pressF&&mode!=="resize"&&!pressF.pid)openPicker(pressF);
   pressF=null;mode=null;guides=[];drawScreen();}
 cv.addEventListener("pointerup",endPointer);cv.addEventListener("pointercancel",endPointer);
-cv.addEventListener("wheel",e=>{const p=P(e);const f=frameAt(p);if(!f||!f.pid)return;e.preventDefault();
-  f.zoom=Math.min(4,Math.max(1,f.zoom*(e.deltaY<0?1.08:0.93)));sel=f;syncSel();drawScreen();},{passive:false});
+cv.addEventListener("wheel",e=>{const p=P(e);const f=editing||frameAt(p);if(!f||!f.pid)return;e.preventDefault();
+  f.zoom=Math.min(4,Math.max(1,f.zoom*(e.deltaY<0?1.08:0.93)));if(!editing)sel=f;syncSel();drawScreen();},{passive:false});
+// ---------- edit mode + action bar ----------
+const abar=document.getElementById("abar");
+function mkbtn(t,cls,fn){const b=document.createElement("button");b.className="abtn"+(cls?" "+cls:"");b.textContent=t;b.onclick=fn;return b;}
+function renderBar(){abar.innerHTML="";
+  if(editing){const h=document.createElement("span");h.className="ahint";h.textContent="拖曳=位移　滾輪/雙指=縮放";abar.append(h,mkbtn("✓ 完成","ok",exitEdit));abar.classList.add("show");return;}
+  if(sel&&sel.pid){abar.append(mkbtn("✎ 編輯","",()=>enterEdit(sel)),mkbtn("🗑 刪除","warn",delSel),mkbtn("✕","",deselect));abar.classList.add("show");return;}
+  abar.classList.remove("show");}
+function deselect(){sel=null;syncSel();drawScreen();}
+function delSel(){if(!sel)return;frames=frames.filter(f=>f!==sel);sel=null;editing=null;syncSel();drawScreen();}
+function enterEdit(f){editing=f;sel=f;const m=mById(f.pid);if(m&&m.type==="video")m.el.pause();syncSel();drawScreen();}
+function exitEdit(){if(editing){const m=mById(editing.pid);if(m&&m.type==="video")m.el.play().catch(()=>{});}editing=null;syncSel();drawScreen();}
 function snap(f,nx,ny){const t=18,CX=[0,RW/2,RW],CY=[0,RH/2,RH];let rx=nx,ry=ny;
   [nx,nx+f.w/2,nx+f.w].forEach((v,i)=>CX.forEach(c=>{if(Math.abs(v-c)<t){rx=c-[0,f.w/2,f.w][i];guides.push({x:c});}}));
   [ny,ny+f.h/2,ny+f.h].forEach((v,i)=>CY.forEach(c=>{if(Math.abs(v-c)<t){ry=c-[0,f.h/2,f.h][i];guides.push({y:c});}}));
@@ -208,7 +228,8 @@ function autoGrid(){const n=frames.length;if(!n)return;const cols=Math.ceil(Math
 function syncSel(){const on=!!sel;["shape","border","zoom","bigger","smaller","dup","del","front","back"].forEach(id=>document.getElementById(id).disabled=!on);
   if(sel){document.getElementById("shape").textContent="形狀:"+(sel.shape==="circle"?"圓":"方");
     const bb=document.getElementById("border");bb.textContent="白框:"+(sel.border?"開":"關");bb.classList.toggle("on",sel.border);
-    document.getElementById("zoom").value=Math.round(sel.zoom*100);}}
+    document.getElementById("zoom").value=Math.round(sel.zoom*100);}
+  renderBar();}
 document.getElementById("shape").onclick=()=>{if(!sel)return;sel.shape=sel.shape==="circle"?"rect":"circle";syncSel();drawScreen();};
 document.getElementById("border").onclick=()=>{if(!sel)return;sel.border=!sel.border;syncSel();drawScreen();};
 document.getElementById("zoom").oninput=e=>{if(!sel)return;sel.zoom=e.target.value/100;drawScreen();};
@@ -258,8 +279,8 @@ Object.keys(RATIOS).forEach(k=>{const b=document.createElement("button");b.textC
 Object.keys(TPL).forEach(k=>{const b=document.createElement("button");b.textContent=k;b.onclick=()=>applyTemplate(k);document.getElementById("tpls").appendChild(b);});
 const panel=document.getElementById("panel"),backdrop=document.getElementById("backdrop");
 const stageWrap=document.getElementById("stageWrap");
-function openDrawer(){panel.classList.add("open");if(COARSE)backdrop.classList.add("open");else{stageWrap.style.paddingRight="356px";fitStage();}}
-function closeDrawer(){panel.classList.remove("open");backdrop.classList.remove("open");stageWrap.style.paddingRight="";fitStage();}
+function openDrawer(){panel.classList.add("open");if(COARSE)backdrop.classList.add("open");else{stageWrap.style.paddingLeft="356px";fitStage();}}
+function closeDrawer(){panel.classList.remove("open");backdrop.classList.remove("open");stageWrap.style.paddingLeft="";fitStage();}
 document.getElementById("menu").onclick=()=>panel.classList.contains("open")?closeDrawer():openDrawer();
 document.getElementById("close").onclick=closeDrawer;backdrop.onclick=closeDrawer;
 setRatio("9:16");applyTemplate("2×2");syncSel();
