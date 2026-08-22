@@ -95,12 +95,18 @@ function draw(exporting){
     cx.save();pathFrame(f);cx.clip();
     const ph=photos.find(p=>p.id===f.pid);
     if(ph&&ph.img.complete&&ph.img.naturalWidth){const c=coverParams(f,ph.img);cx.drawImage(ph.img,c.dx,c.dy,c.dw,c.dh);}
-    else{cx.fillStyle="#e9ecf1";cx.fillRect(f.x,f.y,f.w,f.h);cx.fillStyle="#9aa0aa";cx.font="26px sans-serif";cx.textAlign="center";cx.fillText("點縮圖填入",f.x+f.w/2,f.y+f.h/2);}
+    else{cx.fillStyle="#eef0f4";cx.fillRect(f.x,f.y,f.w,f.h);cx.fillStyle="#b3b9c4";cx.textAlign="center";cx.textBaseline="middle";
+      if(f.w>150&&f.h>170){cx.font="58px sans-serif";cx.fillText("＋",f.x+f.w/2,f.y+f.h/2-14);cx.font="22px sans-serif";cx.fillText("點縮圖填入",f.x+f.w/2,f.y+f.h/2+38);}
+      else if(f.w>90&&f.h>90){cx.font="46px sans-serif";cx.fillText("＋",f.x+f.w/2,f.y+f.h/2);}
+      cx.textBaseline="alphabetic";}
     cx.restore();
     if(f.border){cx.save();pathFrame(f);cx.lineWidth=G.bw;cx.strokeStyle=G.bc;cx.stroke();cx.restore();}
   });
   if(!exporting&&sel){cx.save();pathFrame(sel);cx.lineWidth=3;cx.setLineDash([12,8]);cx.strokeStyle="#e2c85a";cx.stroke();cx.restore();
-    const hs=26;cx.fillStyle="#e2c85a";cx.fillRect(sel.x+sel.w-hs,sel.y+sel.h-hs,hs,hs);}
+    const hs=32,hx=sel.x+sel.w-hs,hy=sel.y+sel.h-hs;
+    cx.save();cx.setLineDash([]);cx.fillStyle="#fff";cx.strokeStyle="#e2c85a";cx.lineWidth=3;
+    cx.fillRect(hx,hy,hs,hs);cx.strokeRect(hx,hy,hs,hs);
+    cx.lineWidth=2.5;cx.beginPath();cx.moveTo(hx+9,hy+hs-7);cx.lineTo(hx+hs-7,hy+9);cx.moveTo(hx+17,hy+hs-7);cx.lineTo(hx+hs-7,hy+17);cx.stroke();cx.restore();}
   if(!exporting)guides.forEach(g=>{cx.save();cx.strokeStyle="rgba(226,200,90,.9)";cx.lineWidth=2;cx.setLineDash([8,6]);cx.beginPath();
     if(g.x!=null){cx.moveTo(g.x,0);cx.lineTo(g.x,RH);}else{cx.moveTo(0,g.y);cx.lineTo(RW,g.y);}cx.stroke();cx.restore();});
 }
@@ -134,7 +140,8 @@ function snap(f,nx,ny){const t=18,cxs=[0,RW/2,RW],cys=[0,RH/2,RH];let rx=nx,ry=n
   return{x:rx,y:ry};}
 
 // ---------- frames ops ----------
-function addFrame(pid){const w=RW*0.44,h=RH*0.28;const f={x:(RW-w)/2,y:(RH-h)/2,w,h,pid:pid||null,shape:"rect",border:false,zoom:1,fx:.5,fy:.5};
+function addFrame(pid){const w=RW*0.44,h=RH*0.28,off=(frames.length%6)*46;
+  const f={x:Math.max(0,Math.min(RW-w,(RW-w)/2-100+off)),y:Math.max(0,Math.min(RH-h,(RH-h)/2-140+off)),w,h,pid:pid||null,shape:"rect",border:false,zoom:1,fx:.5,fy:.5};
   frames.push(f);sel=f;syncSel();draw();}
 document.getElementById("cell").onclick=()=>addFrame(null);
 document.getElementById("dup").onclick=()=>{if(!sel)return;const f={...sel,x:sel.x+30,y:sel.y+30};frames.push(f);sel=f;syncSel();draw();};
@@ -182,5 +189,5 @@ document.getElementById("exp").onclick=()=>{const s=sel;sel=null;guides=[];draw(
 
 // ---------- init ----------
 Object.keys(RATIOS).forEach(k=>{const b=document.createElement("button");b.textContent=k;b.onclick=()=>setRatio(k);document.getElementById("ratios").appendChild(b);});
-setRatio("9:16");addFrame(null);addFrame(null);syncSel();
+setRatio("9:16");for(let i=0;i<4;i++)addFrame(null);autoGrid();sel=null;syncSel();draw();
 </script></body></html>
