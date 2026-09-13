@@ -97,7 +97,12 @@ input[type=number]{width:64px;background:#12151b;color:var(--txt);border:1px sol
 <script>
 const RATIOS={"9:16":[1080,1920],"4:5":[1080,1350],"1:1":[1080,1080],"16:9":[1920,1080],"3:4":[1080,1440]};
 let RW=1080,RH=1920;
-const cv=document.getElementById("stage"),cx=cv.getContext("2d");
+const cv=document.getElementById("stage");
+const screenCx=cv.getContext("2d");
+let cx=screenCx;            // draw() renders through this; export swaps in an offscreen ctx
+const EXPORT_SCALE=2;       // 9:16 -> 2160x3840 = 8.3MP, under the 16.7MP iOS canvas cap
+function hq(c){c.imageSmoothingEnabled=true;c.imageSmoothingQuality="high";return c;}
+hq(screenCx);
 const media=[];             // {id,type:'image'|'video',el}
 let frames=[];              // {x,y,w,h,pid,shape,border,zoom,fx,fy}
 let sel=null, mode=null, drag=null, guides=[], pressF=null, moved=false, editing=null, squareSnap=false;
@@ -144,7 +149,7 @@ function applyTemplate(name){const lay=TPL[name],old=frames.map(f=>({pid:f.pid,z
  [...document.querySelectorAll("#tpls button")].forEach(b=>b.classList.toggle("on",b.dataset.name===name));}
 
 // ---------- sizing ----------
-function setRatio(k){[RW,RH]=RATIOS[k];cv.width=RW;cv.height=RH;fitStage();
+function setRatio(k){[RW,RH]=RATIOS[k];cv.width=RW;cv.height=RH;hq(screenCx);fitStage();
   [...document.querySelectorAll("#ratios button")].forEach(b=>b.classList.toggle("on",b.textContent===k));
   frames.forEach(f=>{f.x=Math.min(f.x,RW-f.w);f.y=Math.min(f.y,RH-f.h);});draw();}
 function fitStage(){const maxW=Math.min(window.innerWidth*0.94,520),maxH=window.innerHeight*(COARSE?0.72:0.82);
@@ -290,7 +295,7 @@ function makeImage(src){const id=++idC,img=new Image();img.onload=()=>drawScreen
 function makeVideo(src){const id=++idC,v=document.createElement("video");v.src=src;v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
   v.onloadeddata=()=>{ensureLoop();drawScreen();};v.play().catch(()=>{});media.push({id,type:"video",el:v});ensureLoop();return id;}
 function fileToMedia(file,cb){if(file.type.startsWith("video")){cb(makeVideo(URL.createObjectURL(file)));}
-  else if(file.type.startsWith("image")){const r=new FileReader();r.onload=e=>cb(makeImage(e.target.result));r.readAsDataURL(file);}}
+  else if(file.type.startsWith("image")){cb(makeImage(URL.createObjectURL(file)));}}
 let pendingFrame=null;
 function openPicker(frame){pendingFrame=frame||null;const fi=document.getElementById("fileAny");
   let px=lastPt.x,py=lastPt.y;
@@ -306,8 +311,12 @@ document.addEventListener("drop",e=>{[...e.dataTransfer.files].forEach(f=>fileTo
 document.addEventListener("click",()=>media.filter(m=>m.type==="video").forEach(m=>m.el.paused&&m.el.play().catch(()=>{})),true);
 
 // ---------- export ----------
-document.getElementById("exp").onclick=()=>{const s=sel;sel=null;guides=[];draw(false);
-  cv.toBlob(b=>{dl(b,"拼圖_"+RW+"x"+RH+".png");sel=s;drawScreen();},"image/png");};
+function renderExport(scale){const c=document.createElement("canvas");
+  c.width=Math.round(RW*scale);c.height=Math.round(RH*scale);
+  const ex=hq(c.getContext("2d"));ex.setTransform(scale,0,0,scale,0,0);
+  const prev=cx;cx=ex;try{draw(false);}finally{cx=prev;}return c;}
+document.getElementById("exp").onclick=()=>{const c=renderExport(EXPORT_SCALE);
+  c.toBlob(b=>{dl(b,"拼圖_"+c.width+"x"+c.height+".png");},"image/png");};
 function pickMime(){const t=["video/mp4;codecs=avc1.64001f","video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
   return t.find(x=>window.MediaRecorder&&MediaRecorder.isTypeSupported(x))||"";}
 const mt=pickMime();document.getElementById("mtInfo").textContent=mt?(mt.includes("mp4")?"→ mp4":"→ webm"):"不支援";
